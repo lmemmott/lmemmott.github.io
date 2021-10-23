@@ -1,0 +1,285 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<!-- 
+		Author:  Lester Memmott
+		Date:  Dec 2007 - July 2020
+		Many thanks to:
+			Google Maps for their maps and providing the API to do the integration
+			The Blackpool Community Church Javascript team for their Google API API tutorials:  http://www.econym.demon.co.uk/googlemaps/
+			The Utah VHF Society for providing the repeater information:  (http://utahvhfs.org/)
+				Data in HTML format:  http://utahvhfs.org/rptr.html
+				Description of date in raw format:  http://utahvhfs.org/raw_dat.html
+				Data in raw format:  http://utahvhfs.org/rptrraw.txt 
+
+		User suggested additions:
+		-Roger Kehr (N3AOQ):  Somewhere show aux power information (availability and how long it is expected to stay up)
+
+		My Suggested additions:
+		-Add details in the comments about how to update the database.  Who do they contact?
+		-Remove "ID" numbers.  They are only intended for trouble shooting purposes anyway.
+		-Add a new section called "Recent Additions"
+		-Somewhere show the names of the repeaters that are missing lat/long info
+		-Host on ussc.com or http://www.utahvhfs.org/ (the web site provided by the Utah VHF society)
+		-Instead of using a static size for the map, dynamically change the size to fill the browser page.
+		-Add in the comments note about high bandwidth is much better.
+		-Add details about how to find the lat lng of a location via the web
+		-Add mouse wheel capabilities to zoom in and out on map
+		-If a link was clicked and the window was open, it updates the window but if it is behind, you can't see it.  ...use rand().
+		-Fix so time doesn't show (Tone:) but instead (Tone:None)
+		-Change tone to CTCSS.
+		-Add more info to bubble such as:  Open/closed, General Location, Area, Elevation, Sponsor, Features, ERP, Cordinated date, info updated date, coverage, Link Info
+		-Add Info code like the stand list has:  OCXACaRbSnpIP
+		-Make another entry point to this page so it only loads one marker for the item passed in via the HTML query string
+		-Use a cookie to "remember" what part of the map the user was looking at.  Return there automatically next time.
+
+		History: 
+		- July 4, 2020:  Moved to Google Maps v3
+	-->
+
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="Amateur Radio Repeater Map">
+	<meta name="keywords" content="utah amateur ham radio vhf society">
+	<meta name="author" content="Lester Memmott">
+	<title>Amateur Radio Repeater Map for Utah</title>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNCP4vQrSU8LVjM9S24r_lGUMfg3qm3GA"
+		type="text/javascript"></script>
+	<style type="text/css">
+		html,
+		body,
+		#map {
+			height: 100%;
+			margin: 0;
+		}
+	</style>
+
+	<script type="text/javascript">
+		// Gobal variables
+		// Arrays to hold copies of the markers and html used by the side_bar
+		var gmarkers = [];
+		var points = [];
+		var htmls = [];
+		var infowindows = [];
+		var i = 0; //Item Count
+		var ItemsWithNoLocationInfo = 0; //Count of items found in the list with no location info included
+
+		// This function is called when an item is clicked in the repeater list on the right side
+		function myclick(i) {
+			infowindows[i].open(map, gmarkers[i]);
+		}
+
+		// Setup the map
+		function initializeMap() {
+			var map = new google.maps.Map(
+				document.getElementById('map'), {
+				center: new google.maps.LatLng(40.6, -112.0),  //Center and zoom in on Utah
+				zoom: 10,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			});
+
+			if (true) { //GBrowserIsCompatible()) 
+				// This variable is for the html which will eventually be placed in the side_bar
+				var side_bar_html = "";
+
+				// IsDuplicateCoordinate:  return true if teh point has been seen before
+				function IsDuplicateCoordinate(point) {
+					for (var j = 0; j < points.length; j++) {
+						if (point.equals(points[j])) {
+							return true;
+						}
+					}
+					return false;
+				}
+
+				// A function to create the marker and set up the event handlers
+				function createMarker(point, name, html) {
+					//Spread out markers just a little if they happen to be at the exact same location
+					while (IsDuplicateCoordinate(point)) {
+						point = new google.maps.LatLng(parseFloat(point.lat()) + 0.0002, parseFloat(point.lng()) + 0.0002);
+					}
+
+					//Create the marker on the map
+					var marker = new google.maps.Marker({
+						position: point,
+						map: map
+					});
+
+					//Add a listener to shows info when it the marker is clicked
+					var infowindow = new google.maps.InfoWindow({
+						content: html
+					});
+					marker.addListener("click", function () {
+						infowindow.open(map, marker);
+					});
+
+					// save the info we need to use later for the side_bar
+					gmarkers[i] = marker;
+					htmls[i] = html;
+					points[i] = point;
+					infowindows[i] = infowindow;
+
+					// add a line to the side_bar html
+					side_bar_html += '<a href="javascript:myclick(' + i + ')">' + name + '</a><br>';
+					i++;
+					return marker;
+				}
+
+				// This is the function that processes the CSV file of repeater data
+				process_it = function (doc) {
+					//make sure there is something in the document to process
+					if (doc == "")
+						return;
+
+					// Split the document into lines
+					lines = doc.split("\n");
+					for (var k = 0; k < lines.length; k++) {
+						if (lines[k].length > 1) {
+							// Split each line into parts separated by "," and use the contents
+							// Document Location:  http://www.ussc.com/~uvhfs/rptrraw.txt  (old)
+							// Document Location:  http://utahvhfs.org/rptrraw.txt
+							// Example of the format:
+							//BAND,OUTPUT,INPUT,STATE,LOCATION,CALLSIGN,SPONSOR,SOURCE,AREA,COORDINATED,OPEN,CLOSED,BILINGUAL,EXPERIMENTAL,LITZ,TONE,CTCSS_IN,CTCSS_OUT,DCS,DCS_CODE,DTMF,REMOTE_BASE,SNP,AUTOPATCH,PATCH_SEQ,CLOSED_PATCH,EMERG_POWER,EMERG_SUN,EMERG_WIND,LINKED,LINK_FREQ,PORTABLE,RACES,ARES,WIDE_AREA,LAW,LAW_DTMF,WEATHER,WEATHER_DTMF,LATITUDE,LONGITUDE,INTERNET,INTERNET_LINK,NOTES,UPDATE,CORD_DATE,USE,LATITUDE_DDMMSS,LONGITUDE_DDDMMSS,AMSL_FEET,TX_POWER,ANT_INFO,ERP,PUB_CODE,Active,Site Name,Coverage Area,Footnotes,Contact Email,Repeater Web Page,MapSel,Contact Phone,Update Source,Coord. Notes,Mailing Address
+							//52,50.0635,,UT,Ogden,K7UV,,UVHFS,Statewide,N,,,,N,N,N,,,N,,N,N,N,N,,N,N,N,N,N,,N,N,N,N,N,,N,,,,,,Beacon,5/8/2001,5/8/2001,SX, , , ,,,10,Y,Y,Ogden, ,,,, ,,,"Noticed on Air May 1, 2001  k7ub/b; 10 watts to a loop 24/7"
+							//144,145.1900,144.5900,UT,Salt Lake,W7IHC,,UVHFS,Wasatch Front,Y,Y,N,,N,N,Y,123.0,,N,,N,N,N,N,,N,N,N,N,N,,N,N,N,N,N,,N,,40.6531,-112.2017,N,,IHC Radio Club 2nd PL 100,8/29/2005,8/29/2005,RO,403911,1121206,8850,,,100,Y,Y,Little Farnsworth Questar,,,,,,,K7JL,IHC purchased W7OAD repeater  Kevin Moved to Lt Farns notify Add PL 123 2-20-06
+							//Interesting parts:  (with index value - zero based)
+							//  OUTPUT (#1) - Repeater output frequency
+							//  LOCATION (#4)
+							//  CALLSIGN (#5)
+							//  SPONSOR (#6)
+							//  AREA (#8)
+							//  CTCSS_IN (#16)
+							//  LATITUDE (#39) -- For Google Maps
+							//  LONGITUDE (#40) -- For Google Maps
+							//  Site Name (#55) 
+							//  Note:  The following URL take the browser to a page with more info:  http://www.ussc.com/~uvhfs/cgi-bin/rptdtl.pl?Nr=10
+							//          Where the Nr=<> is the item number in the list.  10 in this case.
+
+							parts = lines[k].split(",");
+
+							if (parts[0] == "BAND")  //Skip over the first and last items of the file that have column headings
+								continue;
+
+							//Pull out the relevant information from each comma separate line
+							var Output = parts[1];
+							var Location = parts[4];
+							var Callsign = parts[5];
+							var Sponsor = parts[6];
+							var Area = parts[8];
+							var Ctcss = parts[16];
+							var SiteName = parts[55];
+							var lat = parts[39];
+							var lng = parts[40];
+
+							if (lat != "") {  //Only mark the ones with value latitude and longitude info
+								//Create the marker on the map
+								var point = new google.maps.LatLng(lat, lng);
+								var marker = createMarker(
+									point,
+									"(" + i + ") " + Output + ": " + SiteName,
+									"(" + i + ") " + Output + " (Tone:" + Ctcss + ") <br />" + SiteName + "<br />" + "<a href=\"http://utahvhfs.org/cgi-bin/rptdtl.pl?Nr=" + (i+1) + "\" target=\"_NewWindow_\">" + Callsign + "</a>");
+							} else {
+								ItemsWithNoLocationInfo++;  //Keep track of the number that don't have location info
+							}
+						}
+					}
+
+					//Put the assembled side_bar_html contents into the side_bar div
+					document.getElementById("side_bar").innerHTML = side_bar_html;
+
+					//Add a note showing how many items don't have location info
+					document.getElementById("note").innerHTML = "Note: There are " + ItemsWithNoLocationInfo + " repeaters with no latitude and longitude information in the database";
+				}
+
+				//Load the repeater data from the text file, actually a CSV file, on the web site.  A copy is on this web site.  Original is here:  http://utahvhfs.org/rptrraw.txt
+				const Http = new XMLHttpRequest();
+				const url = './rptrraw.txt';
+				Http.open("GET", url);
+				Http.send();
+				Http.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+						process_it(Http.responseText);
+					}
+				}
+			} else {
+				alert("Sorry, the Google Maps API is not compatible with this browser");
+			}
+		}
+
+		google.maps.event.addDomListener(window, 'load', initializeMap);
+	</script>
+</head>
+
+<body text="#000000" bgcolor="#A5F9B7" link="#0000FF" vlink="#800080" alink="#FF0080">
+	<center>
+		<b><i>
+				<font face="Verdana">
+					<font size="+4">Amateur Radio Repeater Map for Utah</font>
+				</font>
+			</i></b>
+		<p />
+		<b><i>
+				<font face="Verdana">
+					<font>
+						Thanks to the The Utah VHF Society for providing the data for this map.
+						See the same data in list form on their web site <a
+							href="http://utahvhfs.org/rptr.html" target="_NewVHFWindow_">here</a>.
+					</font>
+				</font>
+			</i></b>
+	</center>
+	<p />
+	<p />
+
+	<!-- Table for holding map and sidebar.  Note that this is dynamically changed via JavaScript. -->
+	<table border="1" style="width:100%; height:700px">
+		<tr>
+			<td style="height:700px">
+				<div id="map" style="width: 100%; height: 100%"></div>
+			</td>
+			<td valign="top" style="text-decoration: underline; color: #4444ff; width:300px; height:700px">
+				<div id="side_bar" style="overflow:auto; width:300px; height:700px"></div>
+			</td>
+		</tr>
+	</table>
+	<div id="note"></div>
+
+	<noscript><b>JavaScript must be enabled in order for you to use Google Maps.</b>
+		However, it seems JavaScript is either disabled or not supported by your browser.
+		To view Google Maps, enable JavaScript by changing your browser options, and then
+		try again.
+	</noscript>
+
+	<br />
+	<p />
+	<p />
+	<p /><b>Map Background</b>
+	<p />The above is a map of the repeaters listed in the Utah VHF Society repeater
+	list. The map is generated dynamically using the "raw" database (see:
+	<a href="http://utahvhfs.org/raw_dat.html" target="_NewVHFWindow_">http://utahvhfs.org/raw_dat.html</a>)
+	and it is integrated into Google maps using JavaScript running in your web browser.
+	Note that in some cases the database
+	lists repeaters with no latitude nor longitude information included. In
+	these cases, the repeater is not shown on the map but the total number of sites missing this information is listed
+	at the
+	bottom of the map. Your help in getting latatitude and longitude information
+	for all repeaters is appreciated.
+	<p>To use the map, simply click and drag with your mouse to change the area that is shown or use the navigation
+		icons in the top right corner of the map. You can also use the navigation icons to zoom in and out. To get more
+		information about a repeater, click on the marker and a pop-up balloon will show more information about the it.
+		In the balloon, click the call sign to bring up a web page with details about the repeater. Also, the names are
+		listed on the right side ordered by frequency output. Click on any one to shift the map to that point.</p>
+
+	<p>If you have any corrections or suggestions for this page please feel free to send them to me. If you have
+		corrections for the data from the original repeater list provided by the Utah VHF Society please contact the
+		Utah Frequency Coordinator. Details are here <a
+			href="http://utahvhfs.org/uvhfsoff.html#uvhfs_coord" target="_NewVHFWindow_">http://utahvhfs.org/uvhfsoff.html#uvhfs_coord</a></p>
+	<p>
+		Thanks,<br />
+		Lester Memmott<br />
+		N7WOW<br />
+		email: lmemmott (at) yahoo.com</p>
+	<p>
+		<br />Page last updated October 21, 2021
+</body>
+
+</html>
