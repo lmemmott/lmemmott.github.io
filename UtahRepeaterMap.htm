@@ -91,37 +91,44 @@
 					return false;
 				}
 
-				// A function to create the marker and set up the event handlers
+				// A function to create the marker and set up the event handlers.
+				// Note that point may not have coordinate in it if the CSV file was missing them. 
 				function createMarker(point, name, html) {
-					//Spread out markers just a little if they happen to be at the exact same location
-					while (IsDuplicateCoordinate(point)) {
-						point = new google.maps.LatLng(parseFloat(point.lat()) + 0.0002, parseFloat(point.lng()) + 0.0002);
+					if (point === null) {
+						side_bar_html += name + '<br>';
+						i++;
 					}
+					else {
+						//Spread out markers just a little if they happen to be at the exact same location
+						while (IsDuplicateCoordinate(point)) {
+							point = new google.maps.LatLng(parseFloat(point.lat()) + 0.0002, parseFloat(point.lng()) + 0.0002);
+						}
 
-					//Create the marker on the map
-					var marker = new google.maps.Marker({
-						position: point,
-						map: map
-					});
+						//Create the marker on the map
+						var marker = new google.maps.Marker({
+							position: point,
+							map: map
+						});
 
-					//Add a listener to shows info when it the marker is clicked
-					var infowindow = new google.maps.InfoWindow({
-						content: html
-					});
-					marker.addListener("click", function () {
-						infowindow.open(map, marker);
-					});
+						//Add a listener to shows info when it the marker is clicked
+						var infowindow = new google.maps.InfoWindow({
+							content: html
+						});
+						marker.addListener("click", function () {
+							infowindow.open(map, marker);
+						});
 
-					// save the info we need to use later for the side_bar
-					gmarkers[i] = marker;
-					htmls[i] = html;
-					points[i] = point;
-					infowindows[i] = infowindow;
+						// save the info we need to use later for the side_bar
+						gmarkers[i] = marker;
+						htmls[i] = html;
+						points[i] = point;
+						infowindows[i] = infowindow;
 
-					// add a line to the side_bar html
-					side_bar_html += '<a href="javascript:myclick(' + i + ')">' + name + '</a><br>';
-					i++;
-					return marker;
+						// add a line to the side_bar html
+						side_bar_html += '<a href="javascript:myclick(' + i + ')">' + name + '</a><br>';
+						i++;
+						return marker;
+					}
 				}
 
 				// This is the function that processes the CSV file of repeater data
@@ -178,7 +185,16 @@
 									"(" + i + ") " + Output + ": " + SiteName,
 									"(" + i + ") " + Output + " (Tone:" + Ctcss + ") <br />" + SiteName + "<br />" + "<a href=\"http://utahvhfs.org/cgi-bin/rptdtl.pl?Nr=" + (i+1) + "\" target=\"_NewWindow_\">" + Callsign + "</a>");
 							} else {
-								ItemsWithNoLocationInfo++;  //Keep track of the number that don't have location info
+								//Keep track of the number that don't have location info
+								ItemsWithNoLocationInfo++;  
+								
+								//The following puts the item in the list on the right side of the page but doesn't create a marker
+								//This way all items are accounted for and the index doesn't get off for the links
+								var marker = createMarker(
+									null,
+									"(" + i + ") " + Output + ": " + SiteName + " (Coordinates Missing)",
+									null
+								);
 							}
 						}
 					}
@@ -279,7 +295,7 @@
 		N7WOW<br />
 		email: lmemmott (at) yahoo.com</p>
 	<p>
-		<br />Page last updated May 30, 2022
+		<br />Page last updated August 16, 2022
 </body>
 
 </html>
