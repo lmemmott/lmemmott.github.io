@@ -158,7 +158,7 @@
 							//  LATITUDE (#39) -- For Google Maps
 							//  LONGITUDE (#40) -- For Google Maps
 							//  Site Name (#55) 
-							//  Note:  The following URL take the browser to a page with more info:  http://www.ussc.com/~uvhfs/cgi-bin/rptdtl.pl?Nr=10
+							//  Note:  The following URL take the browser to a page with more info:  http://www.ussc.com/~uvhfs/cgi-bin/rptdtl.cgi?Nr=10
 							//          Where the Nr=<> is the item number in the list.  10 in this case.
 
 							parts = lines[k].split(",");
@@ -183,7 +183,7 @@
 								var marker = createMarker(
 									point,
 									"(" + i + ") " + Output + ": " + SiteName,
-									"(" + i + ") " + Output + " (Tone:" + Ctcss + ") <br />" + SiteName + "<br />" + "<a href=\"http://utahvhfs.org/cgi-bin/rptdtl.pl?Nr=" + (i+1) + "\" target=\"_NewWindow_\">" + Callsign + "</a>");
+									"(" + i + ") " + Output + " (Tone:" + Ctcss + ") <br />" + SiteName + "<br />" + "<a href=\"http://utahvhfs.org/cgi-bin/rptdtl.cgi?Nr=" + (i+1) + "\" target=\"_NewWindow_\">" + Callsign + "</a>");
 							} else {
 								//Keep track of the number that don't have location info
 								ItemsWithNoLocationInfo++;  
