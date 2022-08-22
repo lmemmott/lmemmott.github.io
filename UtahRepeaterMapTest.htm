@@ -208,7 +208,8 @@
 
 				//Load the repeater data from the text file, actually a CSV file, on the web site.  A copy is on this web site.  Original is here:  http://utahvhfs.org/rptrraw.txt
 				const Http = new XMLHttpRequest();
-				const url = './rptrraw.txt';
+				//const url = './rptrraw.txt';
+				const url = http://utahvhfs.org/rptrraw.txt  //Load directly from the utahvhfs.org web site to use the latest copy
 				Http.open("GET", url);
 				Http.send();
 				Http.onreadystatechange = function() {
