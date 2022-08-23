@@ -1,6 +1,9 @@
 # Utah Amateur Radio Repeater Map
-This project is a simple map using Google Maps to show amateur radio repeaters across Utah based off the data from the VHFS society. 
 
-## Known Issues
-1. The links for the repeaters use an index number such as https://utahvhfs.org/cgi-bin/rptdtl.pl?Nr=187 where 187 is the index number. Unfortunately, with time, the indexes change getting out of sync causing the links to point to the page for the wrong repeater. If each repeater had it's own unique ID that didn't change, it would solve this problem.  
+This project is a simple map using Google Maps to show amateur radio repeaters across Utah based off the data from the Utah VHF society. 
+
+## Wishlist 
+
+1. Remove "ID" numbers.  They are only intended for trouble shooting purposes anyway.
+1. Instead of using a static size for the map, dynamically change the size to fill the browser page.
 
