@@ -62,15 +62,18 @@
 		var infowindows = [];
 		var i = 0; //Item Count
 		var ItemsWithNoLocationInfo = 0; //Count of items found in the list with no location info included
+		var map;
 
 		// This function is called when an item is clicked in the repeater list on the right side
-		function myclick(i) {
-			infowindows[i].open(map, gmarkers[i]);
+		function myclick(index) {
+			if (map && infowindows[index] && gmarkers[index]) {
+				infowindows[index].open(map, gmarkers[index]);
+			}
 		}
 
 		// Setup the map
 		function initializeMap() {
-			var map = new google.maps.Map(
+			map = new google.maps.Map(
 				document.getElementById('map'), {
 				center: new google.maps.LatLng(40.6, -112.0),  //Center and zoom in on Utah
 				zoom: 10,
@@ -132,13 +135,13 @@
 				}
 
 				// This is the function that processes the CSV file of repeater data
-				process_it = function (doc) {
+				function processIt(doc) {
 					//make sure there is something in the document to process
 					if (doc == "")
 						return;
 
 					// Split the document into lines
-					lines = doc.split("\n");
+					var lines = doc.split("\n");
 					for (var k = 0; k < lines.length; k++) {
 						if (lines[k].length > 1) {
 							// Split each line into parts separated by "," and use the contents
@@ -161,7 +164,7 @@
 							//  Note:  The following URL take the browser to a page with more info:  http://www.ussc.com/~uvhfs/cgi-bin/rptdtl.cgi?Nr=10
 							//          Where the Nr=<> is the item number in the list.  10 in this case.
 
-							parts = lines[k].split(",");
+							var parts = lines[k].split(",");
 
 							if (parts[0] == "BAND")  //Skip over the first and last items of the file that have column headings
 								continue;
@@ -207,16 +210,16 @@
 				}
 
 				//Load the repeater data from the text file, actually a CSV file, on the web site.  A copy is on this web site.  Original is here:  http://utahvhfs.org/rptrraw.txt
-				const Http = new XMLHttpRequest();
-				//const url = './rptrraw.txt';
-				const url = 'https://utahvhfs.org/rptrraw.txt'  //Load directly from the utahvhfs.org web site to use the latest copy
-				Http.open("GET", url);
-				Http.send();
-				Http.onreadystatechange = function() {
-					if (this.readyState == 4 && this.status == 200) {
-						process_it(Http.responseText);
-					}
+				var xhr = new XMLHttpRequest();
+				//var url = './rptrraw.txt';
+				var url = 'https://utahvhfs.org/rptrraw.txt';  //Load directly from the utahvhfs.org web site to use the latest copy
+				xhr.open("GET", url);
+				xhr.send();
+				xhr.onreadystatechange = function() {
+				if (this.readyState == 4 && this.status == 200) {
+					processIt(xhr.responseText);
 				}
+					};
 			} else {
 				alert("Sorry, the Google Maps API is not compatible with this browser");
 			}
